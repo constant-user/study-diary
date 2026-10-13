@@ -1,6 +1,5 @@
 package com.constantuser.studydiary;
 
-import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
@@ -15,6 +14,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.provider.MediaStore;
 import android.text.InputType;
 import android.text.TextUtils;
@@ -22,8 +22,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
+import android.view.WindowManager;
 import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.EditText;
@@ -76,9 +75,6 @@ public class MainActivity extends Activity {
     private GridView daysGrid;
     private final DaysAdapter daysAdapter = new DaysAdapter();
 
-    private Handler timerHandler;
-    private Runnable timerTick;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -91,19 +87,9 @@ public class MainActivity extends Activity {
         viewMonth = now.get(Calendar.MONTH);
         selectedDay = Store.formatDay(now);
 
-        timerHandler = new Handler(Looper.getMainLooper());
-
         buildUi();
         applyPalette();
         refresh();
-    }
-
-    @Override
-    protected void onDestroy() {
-        if (timerHandler != null && timerTick != null) {
-            timerHandler.removeCallbacks(timerTick);
-        }
-        super.onDestroy();
     }
 
     /* ====================== Построение интерфейса ================= */
@@ -207,8 +193,10 @@ public class MainActivity extends Activity {
         daysGrid.setSelector(android.R.color.transparent);
         daysGrid.setAdapter(daysAdapter);
         daysGrid.setOnItemClickListener((parent, view, position, id) -> {
-            DayCell cell = (DayCell) view.getTag();
-            if (cell == null || !cell.hasDate) return;
+            /* view — это сама ячейка DayCell, возвращённая адаптером */
+            if (!(view instanceof DayCell)) return;
+            DayCell cell = (DayCell) view;
+            if (!cell.hasDate) return;
             selectedDay = cell.dayKey;
             daysAdapter.notifyDataSetChanged();
             openDayDialog(cell.dayKey);
@@ -431,8 +419,6 @@ public class MainActivity extends Activity {
     /* ====================== Диалог дня ============================ */
 
     private Dialog dayDialog;
-    private Handler dialogTimerHandler;
-    private Runnable dialogTimerTick;
 
     private void openDayDialog(final String dayKey) {
         if (dayDialog != null) dayDialog.dismiss();
@@ -451,7 +437,8 @@ public class MainActivity extends Activity {
         Window win = dialog.getWindow();
         if (win != null) {
             win.setBackgroundDrawable(rounded(pal.surface, pal.line, dp(1)));
-            win.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            /* клавиатура сама при открытии не поднимается — ввод по касанию */
+            win.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_HIDDEN);
         }
 
         /* --- заголовок --- */
@@ -472,22 +459,22 @@ public class MainActivity extends Activity {
 
         final EditText hoursInput = numberInput();
         final EditText minutesInput = numberInput();
-        studyRow.addView(hoursInput, wrapContent());
+        studyRow.addView(hoursInput, size(dp(64), dp(52)));
         studyRow.addView(unitLabel("ч"), wrapContent());
-        studyRow.addView(minutesInput, wrapContent());
+        studyRow.addView(minutesInput, size(dp(64), dp(52)));
         studyRow.addView(unitLabel("м"), wrapContent());
 
         Button resetStudy = new Button(this);
         resetStudy.setText("Сброс");
         resetStudy.setTextSize(12);
-        resetStudy.setTextColor(pal.muted);
+        tintButton(resetStudy, pal.muted);
         LinearLayout.LayoutParams resetLp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         resetLp.leftMargin = dp(12);
         studyRow.addView(resetStudy, resetLp);
         box.addView(studyRow, matchWrap());
 
-        /* --- таймер --- */
+        /* --- таймер: две строки, чтобы влезало на узких экранах --- */
         LinearLayout timerRow = new LinearLayout(this);
         timerRow.setGravity(Gravity.CENTER_VERTICAL);
         timerRow.setPadding(0, dp(10), 0, 0);
@@ -496,30 +483,37 @@ public class MainActivity extends Activity {
         timerText.setTextSize(28);
         timerText.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
         timerText.setTextColor(pal.accent);
-        timerRow.addView(timerText, wrapContent());
+        timerRow.addView(timerText, new LinearLayout.LayoutParams(
+                0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
 
         final Button timerBtn = new Button(this);
         timerBtn.setTextSize(12);
+        tintButton(timerBtn, pal.accent);
         timerRow.addView(timerBtn, wrapContent());
+
+        final Button timerReset = new Button(this);
+        timerReset.setText("Обнулить");
+        timerReset.setTextSize(12);
+        tintButton(timerReset, pal.muted);
+        timerRow.addView(timerReset, wrapContent());
+        box.addView(timerRow, matchWrap());
+
+        LinearLayout timerRow2 = new LinearLayout(this);
+        timerRow2.setGravity(Gravity.CENTER_VERTICAL);
+        timerRow2.setPadding(0, dp(4), 0, 0);
 
         Button timerMinus = new Button(this);
         timerMinus.setText("−5 с");
         timerMinus.setTextSize(12);
-        timerMinus.setTextColor(pal.muted);
-        timerRow.addView(timerMinus, wrapContent());
+        tintButton(timerMinus, pal.muted);
+        timerRow2.addView(timerMinus, wrapContent());
 
         Button timerPlus = new Button(this);
         timerPlus.setText("+5 с");
         timerPlus.setTextSize(12);
-        timerPlus.setTextColor(pal.muted);
-        timerRow.addView(timerPlus, wrapContent());
-
-        Button timerReset = new Button(this);
-        timerReset.setText("Обнулить");
-        timerReset.setTextSize(12);
-        timerReset.setTextColor(pal.muted);
-        timerRow.addView(timerReset, wrapContent());
-        box.addView(timerRow, matchWrap());
+        tintButton(timerPlus, pal.muted);
+        timerRow2.addView(timerPlus, wrapContent());
+        box.addView(timerRow2, matchWrap());
 
         /* --- цель в день --- */
         LinearLayout goalRow = new LinearLayout(this);
@@ -535,9 +529,9 @@ public class MainActivity extends Activity {
         final EditText goalHours = numberInput();
         final EditText goalMinutes = numberInput();
         goalRow.addView(space(dp(10)));
-        goalRow.addView(goalHours, wrapContent());
+        goalRow.addView(goalHours, size(dp(64), dp(52)));
         goalRow.addView(unitLabel("ч"), wrapContent());
-        goalRow.addView(goalMinutes, wrapContent());
+        goalRow.addView(goalMinutes, size(dp(64), dp(52)));
         goalRow.addView(unitLabel("м"), wrapContent());
         box.addView(goalRow, matchWrap());
 
@@ -567,13 +561,13 @@ public class MainActivity extends Activity {
         final Button cancelEdit = new Button(this);
         cancelEdit.setText("Отмена");
         cancelEdit.setTextSize(12);
-        cancelEdit.setTextColor(pal.muted);
+        tintButton(cancelEdit, pal.muted);
         cancelEdit.setVisibility(View.GONE);
         editorRow.addView(cancelEdit, wrapContent());
         final Button saveNote = new Button(this);
         saveNote.setText("СОХРАНИТЬ");
         saveNote.setTextSize(12);
-        saveNote.setTextColor(pal.accent);
+        tintButton(saveNote, pal.accent);
         editorRow.addView(saveNote, wrapContent());
         box.addView(editorRow, matchWrap());
 
@@ -590,12 +584,21 @@ public class MainActivity extends Activity {
         reloadUi[0] = () -> {
             Store.Mark mark = store.markFor(dayKey);
 
-            hoursInput.setText(String.valueOf(mark.minutes / 60));
-            minutesInput.setText(String.valueOf(mark.minutes % 60));
+            /* не перетирать то, что пользователь прямо сейчас печатает */
+            if (!hoursInput.hasFocus()) {
+                hoursInput.setText(String.valueOf(mark.minutes / 60));
+            }
+            if (!minutesInput.hasFocus()) {
+                minutesInput.setText(String.valueOf(mark.minutes % 60));
+            }
 
             int goal = store.goalMinutes();
-            goalHours.setText(String.valueOf(goal / 60));
-            goalMinutes.setText(String.valueOf(goal % 60));
+            if (!goalHours.hasFocus()) {
+                goalHours.setText(String.valueOf(goal / 60));
+            }
+            if (!goalMinutes.hasFocus()) {
+                goalMinutes.setText(String.valueOf(goal % 60));
+            }
 
             int pct = goal > 0 ? Math.min(100, mark.minutes * 100 / goal) : 0;
             progressText.setText(String.format(Locale.ROOT, "%s из %s · %d%%",
@@ -683,14 +686,28 @@ public class MainActivity extends Activity {
 
         /* кнопки действий */
         View.OnClickListener applyStudy = v -> {
-            int h = safeInt(hoursInput.getText().toString(), 0, 23);
+            int h = safeInt(hoursInput.getText().toString(), 0, 24);
             int m = safeInt(minutesInput.getText().toString(), 0, 59);
-            store.writeMark(dayKey, h * 60 + m, store.markFor(dayKey).status);
+            store.writeMark(dayKey, Math.min(24 * 60, h * 60 + m),
+                    store.markFor(dayKey).status);
             reloadUi[0].run();
             refresh();
         };
-        hoursInput.setOnFocusChangeListener((v, has) -> { if (!has) applyStudy.onClick(v); });
-        minutesInput.setOnFocusChangeListener((v, has) -> { if (!has) applyStudy.onClick(v); });
+        /* сохранять при потере фокуса — но только когда ушли из ПАРЫ полей,
+           иначе переход «часы → минуты» стирал бы введённое.
+           Постим в главный Handler: View.post у вида, ещё не привязанного
+           к окну, уходит в отложенную очередь и может не выполниться. */
+        final Handler uiHandler = new Handler(Looper.getMainLooper());
+        hoursInput.setOnFocusChangeListener((v, has) -> {
+            if (!has) uiHandler.post(() -> {
+                if (!hoursInput.hasFocus() && !minutesInput.hasFocus()) applyStudy.onClick(v);
+            });
+        });
+        minutesInput.setOnFocusChangeListener((v, has) -> {
+            if (!has) uiHandler.post(() -> {
+                if (!hoursInput.hasFocus() && !minutesInput.hasFocus()) applyStudy.onClick(v);
+            });
+        });
         hoursInput.setOnEditorActionListener((v, a, e) -> { applyStudy.onClick(v); return true; });
         minutesInput.setOnEditorActionListener((v, a, e) -> { applyStudy.onClick(v); return true; });
 
@@ -706,20 +723,25 @@ public class MainActivity extends Activity {
             Store.TimerState t = store.timer();
             if (t.day.equals(dayKey) && (t.running || t.baseSec > 0)) {
                 if (t.running) {
-                    commitTimer(t);
+                    commitTimer(t);              /* зафиксировать прошедшее */
                     t.running = false;
                     t.startedAt = 0;
                 } else {
                     t.running = true;
-                    t.startedAt = System.currentTimeMillis();
+                    t.startedAt = SystemClock.elapsedRealtime();
                 }
                 store.saveTimer(t);
             } else {
-                store.saveTimer(null);
+                /* таймер другого дня (или пустой): сначала засчитать его время */
+                Store.TimerState old = store.timer();
+                if (Store.isValidDay(old.day)) {
+                    commitTimer(old);
+                    store.saveTimer(old);
+                }
                 Store.TimerState fresh = new Store.TimerState();
                 fresh.day = dayKey;
                 fresh.running = true;
-                fresh.startedAt = System.currentTimeMillis();
+                fresh.startedAt = SystemClock.elapsedRealtime();
                 store.saveTimer(fresh);
             }
             reloadUi[0].run();
@@ -733,7 +755,7 @@ public class MainActivity extends Activity {
             commitTimer(t);
             t.baseSec = 0;
             t.committedMin = 0;
-            t.startedAt = t.running ? System.currentTimeMillis() : 0;
+            t.startedAt = t.running ? SystemClock.elapsedRealtime() : 0;
             store.saveTimer(t);
             reloadUi[0].run();
             Toast.makeText(MainActivity.this, "Таймер обнулён, время в цели сохранено",
@@ -747,8 +769,18 @@ public class MainActivity extends Activity {
             reloadUi[0].run();
             refresh();
         };
-        goalHours.setOnFocusChangeListener((v, has) -> { if (!has) applyGoal.onClick(v); });
-        goalMinutes.setOnFocusChangeListener((v, has) -> { if (!has) applyGoal.onClick(v); });
+        goalHours.setOnFocusChangeListener((v, has) -> {
+            if (!has) uiHandler.post(() -> {
+                if (!goalHours.hasFocus() && !goalMinutes.hasFocus()) applyGoal.onClick(v);
+            });
+        });
+        goalMinutes.setOnFocusChangeListener((v, has) -> {
+            if (!has) uiHandler.post(() -> {
+                if (!goalHours.hasFocus() && !goalMinutes.hasFocus()) applyGoal.onClick(v);
+            });
+        });
+        goalHours.setOnEditorActionListener((v, a, e) -> { applyGoal.onClick(v); return true; });
+        goalMinutes.setOnEditorActionListener((v, a, e) -> { applyGoal.onClick(v); return true; });
 
         saveNote.setOnClickListener(v -> {
             String text = noteInput.getText().toString();
@@ -772,9 +804,12 @@ public class MainActivity extends Activity {
             cancelEdit.setVisibility(View.GONE);
         });
 
-        /* живые секунды таймера */
-        dialogTimerHandler = new Handler(Looper.getMainLooper());
-        dialogTimerTick = new Runnable() {
+        /* живые секунды таймера — handler и tick принадлежат ЭТОМУ диалогу:
+           закрытие старого диалога не должно гасить тик нового */
+        final int[] lastCommitted = {-1};
+        final Handler dlgHandler = new Handler(Looper.getMainLooper());
+        final Runnable[] dlgTick = new Runnable[1];
+        dlgTick[0] = new Runnable() {
             @Override
             public void run() {
                 Store.TimerState t = store.timer();
@@ -783,32 +818,47 @@ public class MainActivity extends Activity {
                 if (t.running) {
                     commitTimer(t);
                     store.saveTimer(t);
-                    final Store.Mark mark = store.markFor(dayKey);
-                    final int goal = store.goalMinutes();
-                    final int pct = goal > 0 ? Math.min(100, mark.minutes * 100 / goal) : 0;
-                    progressText.setText(String.format(Locale.ROOT, "%s из %s · %d%%",
-                            formatMinutes(mark.minutes), formatMinutes(goal), pct));
-                    progressText.setTextColor(mark.minutes >= goal && goal > 0 ? pal.green : pal.muted);
-                    hoursInput.setText(String.valueOf(mark.minutes / 60));
-                    minutesInput.setText(String.valueOf(mark.minutes % 60));
-                    refresh();
+                    if (t.committedMin != lastCommitted[0]) {
+                        /* прошла новая минута — обновить прогресс и календарь */
+                        lastCommitted[0] = t.committedMin;
+                        Store.Mark mark = store.markFor(dayKey);
+                        int goal = store.goalMinutes();
+                        int pct = goal > 0 ? Math.min(100, mark.minutes * 100 / goal) : 0;
+                        progressText.setText(String.format(Locale.ROOT, "%s из %s · %d%%",
+                                formatMinutes(mark.minutes), formatMinutes(goal), pct));
+                        progressText.setTextColor(
+                                mark.minutes >= goal && goal > 0 ? pal.green : pal.muted);
+                        if (!hoursInput.hasFocus()) {
+                            hoursInput.setText(String.valueOf(mark.minutes / 60));
+                        }
+                        if (!minutesInput.hasFocus()) {
+                            minutesInput.setText(String.valueOf(mark.minutes % 60));
+                        }
+                        refresh();
+                    }
                 }
-                dialogTimerHandler.postDelayed(this, 1000);
+                dlgHandler.postDelayed(dlgTick[0], 1000);
             }
         };
-        dialogTimerHandler.postDelayed(dialogTimerTick, 1000);
+        dlgHandler.postDelayed(dlgTick[0], 1000);
 
         dialog.setOnDismissListener(d -> {
-            if (dialogTimerHandler != null && dialogTimerTick != null) {
-                dialogTimerHandler.removeCallbacks(dialogTimerTick);
+            /* дожать поля ввода, если диалог закрыли, не снимая фокус */
+            applyStudy.onClick(hoursInput);
+            applyGoal.onClick(goalHours);
+            dlgHandler.removeCallbacks(dlgTick[0]);
+            if (dayDialog == dialog) {
+                dayDialog = null;
             }
-            dayDialog = null;
             refresh();
         });
 
         reloadUi[0].run();
         dayDialog = dialog;
         dialog.show();
+        if (win != null) {
+            win.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        }
     }
 
     private int chipTextColor(String status) {
@@ -834,12 +884,17 @@ public class MainActivity extends Activity {
     private static int totalSeconds(Store.TimerState t) {
         int total = t.baseSec;
         if (t.running && t.startedAt > 0) {
-            total += (int) Math.max(0, (System.currentTimeMillis() - t.startedAt) / 1000);
+            total += (int) Math.max(0, (SystemClock.elapsedRealtime() - t.startedAt) / 1000);
         }
         return Math.max(0, total);
     }
 
-    /** Записывает целые минуты счётчика в отметку дня (как в веб-версии). */
+    /**
+     * Записывает целые минуты счётчика в отметку дня И нормализует состояние:
+     * baseSec := фактически накопленные секунды, при работающем таймере отсчёт
+     * продолжается заново от baseSec. После вызова ни пауза, ни продолжение
+     * не теряют уже прошедшее время.
+     */
     private void commitTimer(Store.TimerState t) {
         if (t == null || !Store.isValidDay(t.day)) return;
         int total = totalSeconds(t);
@@ -847,14 +902,11 @@ public class MainActivity extends Activity {
         int diff = committed - t.committedMin;
         if (diff != 0) {
             Store.Mark mark = store.markFor(t.day);
-            store.writeMark(t.day, mark.minutes + diff, mark.status);
+            store.writeMark(t.day, Math.max(0, mark.minutes + diff), mark.status);
             t.committedMin = committed;
         }
-        if (t.running && t.startedAt > 0) {
-            /* база остаётся прежней, отсчёт продолжается */
-        } else {
-            t.baseSec = total;
-        }
+        t.baseSec = total;
+        t.startedAt = t.running ? SystemClock.elapsedRealtime() : 0;
     }
 
     private void adjustTimer(String dayKey, int deltaSec, Runnable reload) {
@@ -866,7 +918,7 @@ public class MainActivity extends Activity {
         commitTimer(t);
         int total = Math.max(0, Math.min(24 * 60 * 60, totalSeconds(t) + deltaSec));
         t.baseSec = total;
-        if (t.running) t.startedAt = System.currentTimeMillis();
+        if (t.running) t.startedAt = SystemClock.elapsedRealtime();
         else t.startedAt = 0;
 
         int newCommitted = total / 60;
@@ -1011,16 +1063,19 @@ public class MainActivity extends Activity {
     /* ====================== Экспорт / импорт ====================== */
 
     private void exportFile(final String kind) {
+        /* имя считаем на UI-потоке, пока значения согласованы */
+        Calendar now = Calendar.getInstance();
+        final String name = "diary-" + now.get(Calendar.YEAR)
+                + Store.twoDigits(now.get(Calendar.MONTH) + 1)
+                + Store.twoDigits(now.get(Calendar.DAY_OF_MONTH))
+                + (kind.equals("json") ? ".json" : ".md");
         new Thread(() -> {
             try {
-                String name = "diary-" + viewYear
-                        + Store.twoDigits(Calendar.getInstance().get(Calendar.MONTH) + 1)
-                        + Store.twoDigits(Calendar.getInstance().get(Calendar.DAY_OF_MONTH))
-                        + (kind.equals("json") ? ".json" : ".md");
                 String content = kind.equals("json")
                         ? store.exportJson().toString(2)
                         : buildMarkdown();
-                saveToDownloads(name, content, kind.equals("json") ? "application/json" : "text/markdown");
+                saveToDownloads(name, content,
+                        kind.equals("json") ? "application/json" : "text/markdown");
                 runOnUiThread(() -> Toast.makeText(MainActivity.this,
                         "Сохранено в «Загрузки/Дневник»", Toast.LENGTH_LONG).show());
             } catch (Exception e) {
@@ -1032,7 +1087,6 @@ public class MainActivity extends Activity {
 
     private String buildMarkdown() {
         StringBuilder sb = new StringBuilder("# Дневник\n\n");
-        java.text.SimpleDateFormat fmt = new java.text.SimpleDateFormat("yyyy-MM-dd", Locale.ROOT);
         for (String day : store.allNotesByDay().keySet()) {
             Store.Mark mark = store.markFor(day);
             String[] p = day.split("-");
@@ -1171,16 +1225,24 @@ public class MainActivity extends Activity {
         e.setTextColor(pal.text);
         e.setBackgroundTintList(android.content.res.ColorStateList.valueOf(pal.line));
         e.setSingleLine();
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(64), dp(52));
-        e.setLayoutParams(lp);
         return e;
+    }
+
+    private LinearLayout.LayoutParams size(int w, int h) {
+        return new LinearLayout.LayoutParams(w, h);
+    }
+
+    /** Кнопка без material-подложки: читается и на тёмных, и на светлых темах. */
+    private void tintButton(Button b, int color) {
+        b.setTextColor(color);
+        b.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.TRANSPARENT));
     }
 
     private Button smallAction(String text, View.OnClickListener onClick) {
         Button b = new Button(this);
         b.setText(text);
         b.setTextSize(11);
-        b.setTextColor(pal.muted);
+        tintButton(b, pal.muted);
         b.setOnClickListener(onClick);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);

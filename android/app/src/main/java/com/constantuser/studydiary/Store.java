@@ -348,14 +348,13 @@ final class Store {
         for (Map.Entry<String, Mark> e : marks.entrySet()) {
             String day = e.getKey();
             Mark m = e.getValue();
-            boolean inYear = day.startsWith(prefix);
-            if (inYear) {
-                s.totalMinutes += m.minutes;
-                if (m.minutes > 0) s.markedDays++;
-                if ("green".equals(m.status)) s.green++;
-                else if ("yellow".equals(m.status)) s.yellow++;
-                else if ("red".equals(m.status)) s.red++;
-            }
+            if (!day.startsWith(prefix)) continue;   /* только дни этого года */
+            s.totalMinutes += m.minutes;
+            if (m.minutes > 0) s.markedDays++;
+            if ("green".equals(m.status)) s.green++;
+            else if ("yellow".equals(m.status)) s.yellow++;
+            else if ("red".equals(m.status)) s.red++;
+
             if (m.minutes > 0 && day.length() >= 7) {
                 try {
                     int month = Integer.parseInt(day.substring(5, 7)) - 1;
@@ -380,7 +379,8 @@ final class Store {
         if (markFor(formatDay(c)).minutes <= 0) {
             c.add(java.util.Calendar.DAY_OF_MONTH, -1);
         }
-        while (markFor(formatDay(c)).minutes > 0) {
+        /* предохранитель: не уходить дальше 10 лет назад */
+        while (streak < 3660 && markFor(formatDay(c)).minutes > 0) {
             streak++;
             c.add(java.util.Calendar.DAY_OF_MONTH, -1);
         }

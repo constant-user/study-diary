@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Тесты нативного приложения дневника (Robolectric + JUnit4).
+  Запуск: mvn -f tests/pom.xml test
+  Скомпилированный android.jar подставляется из установленного SDK.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>com.constantuser</groupId>
+  <artifactId>study-diary-tests</artifactId>
+  <version>1.0</version>
+  <packaging>jar</packaging>
+
+  <properties>
+    <maven.compiler.release>17</maven.compiler.release>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <android.jar>${env.USERPROFILE}/Android/Sdk/platforms/android-34/android.jar</android.jar>
+  </properties>
+
+  <!-- androidx-зависимости Robolectric лежат в Google Maven, а не в Central -->
+  <repositories>
+    <repository>
+      <id>google</id>
+      <name>Google Maven</name>
+      <url>https://maven.google.com</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
+  </repositories>
+
+  <dependencies>
+    <!-- android.jar нужен только для компиляции; в рантайме Robolectric
+         подставляет инструментированный android-all -->
+    <dependency>
+      <groupId>local.android</groupId>
+      <artifactId>android-jar</artifactId>
+      <version>34</version>
+      <scope>system</scope>
+      <systemPath>${android.jar}</systemPath>
+    </dependency>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>4.13.2</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.robolectric</groupId>
+      <artifactId>robolectric</artifactId>
+      <version>4.11.1</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>build-helper-maven-plugin</artifactId>
+        <version>3.5.0</version>
+        <executions>
+          <execution>
+            <id>add-app-source</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>add-source</goal>
+            </goals>
+            <configuration>
+              <sources>
+                <source>${project.basedir}/../app/src/main/java</source>
+              </sources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.2.5</version>
+        <configuration>
+          <trimStackTrace>false</trimStackTrace>
+          <!-- классы из AAR-зависимостей Robolectric: Maven не умеет
+               класть .aar в classpath, поэтому распаковываем заранее -->
+          <additionalClasspathElements>
+            <additionalClasspathElement>${project.build.directory}/aar-monitor/classes.jar</additionalClasspathElement>
+            <additionalClasspathElement>${project.build.directory}/aar-espresso/classes.jar</additionalClasspathElement>
+          </additionalClasspathElements>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <version>3.6.1</version>
+        <executions>
+          <execution>
+            <id>copy-aars</id>
+            <phase>process-test-resources</phase>
+            <goals>
+              <goal>copy</goal>
+            </goals>
+            <configuration>
+              <artifactItems>
+                <artifactItem>
+                  <groupId>androidx.test</groupId>
+                  <artifactId>monitor</artifactId>
+                  <version>1.6.1</version>
+                  <type>aar</type>
+                  <outputDirectory>${project.build.directory}/aar-monitor</outputDirectory>
+                  <destFileName>monitor.aar</destFileName>
+                </artifactItem>
+                <artifactItem>
+                  <groupId>androidx.test.espresso</groupId>
+                  <artifactId>espresso-idling-resource</artifactId>
+                  <version>3.5.1</version>
+                  <type>aar</type>
+                  <outputDirectory>${project.build.directory}/aar-espresso</outputDirectory>
+                  <destFileName>espresso.aar</destFileName>
+                </artifactItem>
+              </artifactItems>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-antrun-plugin</artifactId>
+        <version>3.1.0</version>
+        <executions>
+          <execution>
+            <id>unpack-aars</id>
+            <phase>process-test-resources</phase>
+            <goals>
+              <goal>run</goal>
+            </goals>
+            <configuration>
+              <target>
+                <unzip src="${project.build.directory}/aar-monitor/monitor.aar"
+                       dest="${project.build.directory}/aar-monitor"/>
+                <unzip src="${project.build.directory}/aar-espresso/espresso.aar"
+                       dest="${project.build.directory}/aar-espresso"/>
+              </target>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+    <!-- манифест и ресурсы приложения — на тестовом classpath,
+         чтобы Robolectric нашёл их при старте -->
+    <testResources>
+      <testResource>
+        <directory>src/test/resources</directory>
+      </testResource>
+      <testResource>
+        <directory>${project.basedir}/../app/src/main</directory>
+        <includes>
+          <include>AndroidManifest.xml</include>
+          <include>res/**</include>
+        </includes>
+      </testResource>
+    </testResources>
+  </build>
+</project>

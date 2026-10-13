@@ -5,6 +5,10 @@
 #  Требования: JDK 17+, Android SDK (platforms;android-34, build-tools;34.0.0)
 #  Запуск: powershell -ExecutionPolicy Bypass -File build-native.ps1
 #  Результат: bin/study-diary.apk
+#
+#  ВАЖНО: debug.keystore хранится ВНЕ bin\, иначе «Очистка bin\»
+#  удаляла бы ключ, и каждая сборка получала бы другую подпись —
+#  Android отказался бы ставить обновление поверх предыдущей версии.
 # ============================================================
 
 param(
@@ -42,7 +46,7 @@ Write-Host "==> 2/7 Линковка пакета"
     --manifest "$main\AndroidManifest.xml" `
     --java "$bin\gen" `
     --min-sdk-version $MinSdk --target-sdk-version 34 `
-    --version-code 3 --version-name "3.0" `
+    --version-code 4 --version-name "3.1" `
     "$bin\res.zip"
 if ($LASTEXITCODE -ne 0) { throw "aapt2 link failed" }
 
@@ -68,7 +72,7 @@ Write-Host "==> 6/7 zipalign"
 if ($LASTEXITCODE -ne 0) { throw "zipalign failed" }
 
 Write-Host "==> 7/7 подпись"
-$ks = "$bin\debug.keystore"
+$ks = Join-Path $root "debug.keystore"
 if (-not (Test-Path $ks)) {
     & keytool -genkeypair -keystore $ks -storepass android -keypass android `
         -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10950 `

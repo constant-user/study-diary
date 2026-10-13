@@ -123,6 +123,8 @@ URI. Ни при установке темы, ни при работе прил�
 - Формат экспорта совместим с веб-версией — копия переносится в обе стороны
 - Сборка: `powershell -ExecutionPolicy Bypass -File android\build-native.ps1`
   (aapt2 + javac + d8 + apksigner), подробности — в `android/README.md`
+- Логика и UI-потоки покрыты 34 автотестами (Robolectric, `android/tests/`),
+  запуск: `mvn -f android\tests\pom.xml test`
 
 ## Данные
 
