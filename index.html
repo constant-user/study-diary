@@ -10,7 +10,7 @@
   <title>Дневник</title>
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body data-theme="mono">
   <div class="app">
 
     <header class="header">
@@ -31,6 +31,7 @@
         </label>
         <button class="btn-ghost" id="todayBtn">Сегодня</button>
         <button class="btn-ghost" id="feedBtn" aria-haspopup="dialog">Лента</button>
+        <button class="btn-ghost" id="themeBtn" aria-haspopup="dialog">Тема</button>
         <button class="btn-ghost" id="searchBtn" aria-expanded="false">Поиск</button>
       </div>
     </header>
@@ -180,6 +181,15 @@
     <div class="picker-grid picker-years" id="yearGrid"></div>
   </dialog>
 
+  <dialog class="dialog dialog-themes" id="themeDialog">
+    <div class="dialog-head">
+      <h2>ТЕМА ОФОРМЛЕНИЯ</h2>
+      <button class="btn-icon" data-close aria-label="Закрыть">✕</button>
+    </div>
+    <div class="theme-grid" id="themeGrid"></div>
+    <p class="confirm-text">Узоры и цвета встроены в приложение — при переключении ничего не загружается из сети.</p>
+  </dialog>
+
   <dialog class="dialog dialog-feed" id="feedDialog">
     <div class="dialog-head">
       <h2>ЛЕНТА ЗАМЕТОК</h2>
@@ -221,6 +231,7 @@
       <dt>T</dt><dd>сегодняшний день</dd>
       <dt>F</dt><dd>лента заметок</dd>
       <dt>Y</dt><dd>обзор года</dd>
+      <dt>G</dt><dd>выбор темы оформления</dd>
       <dt>N</dt><dd>новая заметка для выбранного дня</dd>
       <dt>1 – 4</dt><dd>статус дня: нет / зелёный / жёлтый / красный</dd>
       <dt>Ctrl+Z</dt><dd>отменить последнее действие</dd>

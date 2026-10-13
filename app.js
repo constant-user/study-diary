@@ -23,6 +23,21 @@ const DEFAULT_GOAL_MINUTES = 120;
 
 const STATUSES = ['', 'green', 'yellow', 'red'];
 
+/* Белый список тем: значение из localStorage принимается только если есть в этом списке */
+const THEMES = ['mono', 'night', 'ocean', 'forest', 'sunset', 'sakura', 'lavender', 'paper', 'mist'];
+
+const THEME_NAMES = {
+  mono: 'Чёрно-белый',
+  night: 'Ночь',
+  ocean: 'Океан',
+  forest: 'Лес',
+  sunset: 'Закат',
+  sakura: 'Сакура',
+  lavender: 'Лаванда',
+  paper: 'Бумага',
+  mist: 'Мгла'
+};
+
 const MONTHS = [
   'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
   'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
@@ -189,12 +204,16 @@ function sanitizeMarks(source) {
 
 function sanitizeSettings(source) {
   let goal = DEFAULT_GOAL_MINUTES;
+  let theme = 'mono';
   if (source && source !== null && typeof source === 'object') {
     if (Number.isFinite(Number(source.goalMinutes))) {
       goal = clampInt(source.goalMinutes, 0, MAX_MINUTES_PER_DAY);
     }
+    if (THEMES.indexOf(source.theme) >= 0) {
+      theme = source.theme;
+    }
   }
-  return { goalMinutes: goal };
+  return { goalMinutes: goal, theme: theme };
 }
 
 function sanitizeTimer(source) {
@@ -339,6 +358,9 @@ const els = {
   feedFilter: $('feedFilter'),
   feedList: $('feedList'),
   feedBtn: $('feedBtn'),
+  themeBtn: $('themeBtn'),
+  themeDialog: $('themeDialog'),
+  themeGrid: $('themeGrid'),
   jumpDate: $('jumpDate'),
   yearBtn: $('yearBtn'),
   overviewDialog: $('overviewDialog'),
@@ -1223,6 +1245,61 @@ function renderFeed(filter) {
   }
 }
 
+/* ------------------------- Темы оформления ---------------------- */
+
+/* Применяет тему к <body> и сохраняет выбор (только из белого списка) */
+function applyTheme(name) {
+  const theme = THEMES.indexOf(name) >= 0 ? name : 'mono';
+  document.body.dataset.theme = theme;
+  if (settings.theme !== theme) {
+    settings.theme = theme;
+    saveSettings();
+  }
+}
+
+function renderThemes() {
+  const frag = document.createDocumentFragment();
+
+  for (const id of THEMES) {
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'theme-card' + (settings.theme === id ? ' is-active' : '');
+    card.dataset.themeId = id;
+    card.dataset.theme = id;   /* превью показывает палитру своей темы */
+    card.setAttribute('aria-pressed', settings.theme === id ? 'true' : 'false');
+
+    const preview = document.createElement('span');
+    preview.className = 'tc-preview';
+    for (let i = 0; i < 3; i++) preview.appendChild(document.createElement('i'));
+
+    const row = document.createElement('span');
+    row.className = 'tc-row';
+    ['g', 'y', 'r'].forEach((cls) => {
+      const dot = document.createElement('i');
+      dot.className = 'tc-dot ' + cls;
+      row.appendChild(dot);
+    });
+    const accent = document.createElement('i');
+    accent.className = 'tc-accent';
+    row.appendChild(accent);
+    preview.appendChild(row);
+
+    const label = document.createElement('span');
+    label.className = 'tc-name';
+    label.textContent = THEME_NAMES[id] || id;
+
+    card.append(preview, label);
+    frag.appendChild(card);
+  }
+
+  els.themeGrid.replaceChildren(frag);
+}
+
+function openThemes() {
+  renderThemes();
+  if (!els.themeDialog.open) els.themeDialog.showModal();
+}
+
 /* ------------------------- Обзор года -------------------------- */
 
 function openOverview() {
@@ -1775,6 +1852,17 @@ els.feedBtn.addEventListener('click', openFeed);
 els.feedFilter.addEventListener('input', () => renderFeed(els.feedFilter.value));
 
 /* Новые кнопки */
+els.themeBtn.addEventListener('click', openThemes);
+els.themeGrid.addEventListener('click', (event) => {
+  const card = event.target.closest('.theme-card');
+  if (!card) return;
+  const id = card.dataset.themeId;
+  if (THEMES.indexOf(id) < 0) return;
+  applyTheme(id);
+  renderThemes();
+  els.themeDialog.close();
+  toast('Тема: ' + (THEME_NAMES[id] || id));
+});
 els.jumpDate.addEventListener('change', () => jumpToDate(els.jumpDate.value));
 els.yearBtn.addEventListener('click', openOverview);
 els.helpBtn.addEventListener('click', () => els.helpDialog.showModal());
@@ -1839,7 +1927,7 @@ $('clearBtn').addEventListener('click', () => {
 document.addEventListener('keydown', (event) => {
   const dialogOpen = els.monthDialog.open || els.yearDialog.open ||
     els.confirmDialog.open || els.feedDialog.open ||
-    els.overviewDialog.open || els.helpDialog.open;
+    els.overviewDialog.open || els.helpDialog.open || els.themeDialog.open;
 
   /* Отмена действия работает и при открытых полях ввода */
   if ((event.ctrlKey || event.metaKey) && (event.key === 'z' || event.key === 'Z' || event.key === 'я' || event.key === 'Я')) {
@@ -1864,6 +1952,8 @@ document.addEventListener('keydown', (event) => {
     openFeed();
   } else if (event.key === 'y' || event.key === 'н') {
     openOverview();
+  } else if (event.key === 'g' || event.key === 'п') {
+    openThemes();
   } else if (event.key === 'h' || event.key === 'р') {
     els.helpDialog.showModal();
   } else if (event.key === 'n' || event.key === 'т') {
@@ -1886,7 +1976,7 @@ document.addEventListener('keydown', (event) => {
 
 /* Закрытие диалога по клику именно на подложку */
 [els.monthDialog, els.yearDialog, els.confirmDialog, els.feedDialog,
- els.overviewDialog, els.helpDialog].forEach((dlg) => {
+ els.overviewDialog, els.helpDialog, els.themeDialog].forEach((dlg) => {
   dlg.addEventListener('click', (event) => {
     if (event.target !== dlg) return;
     const r = dlg.getBoundingClientRect();
@@ -1924,6 +2014,7 @@ window.addEventListener('beforeunload', () => {
 
 /* ------------------------- Запуск -------------------------------- */
 
+applyTheme(settings.theme);
 render();
 renderPanel();
 updateTimerUI();
