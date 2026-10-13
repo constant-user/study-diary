@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Запрещает любые сетевые запросы и inline-код: только локальные файлы приложения. -->
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'none'; style-src 'self' file:; script-src 'self' file:; img-src 'self' file: data:; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="no-referrer">
+  <title>Дневник</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+
+    <header class="header">
+      <div class="brand">ДНЕВНИК</div>
+
+      <div class="nav">
+        <button class="btn-icon" id="prevYear" title="Предыдущий год" aria-label="Предыдущий год">«</button>
+        <button class="btn-icon" id="prevMonth" title="Предыдущий месяц" aria-label="Предыдущий месяц">‹</button>
+        <button class="nav-label" id="monthLabel" aria-haspopup="dialog">Месяц</button>
+        <button class="nav-label nav-year" id="yearLabel" aria-haspopup="dialog">Год</button>
+        <button class="btn-icon" id="nextMonth" title="Следующий месяц" aria-label="Следующий месяц">›</button>
+        <button class="btn-icon" id="nextYear" title="Следующий год" aria-label="Следующий год">»</button>
+      </div>
+
+      <div class="actions">
+        <label class="jump" title="Перейти к дате">
+          <input type="date" id="jumpDate" aria-label="Перейти к дате">
+        </label>
+        <button class="btn-ghost" id="todayBtn">Сегодня</button>
+        <button class="btn-ghost" id="feedBtn" aria-haspopup="dialog">Лента</button>
+        <button class="btn-ghost" id="searchBtn" aria-expanded="false">Поиск</button>
+      </div>
+    </header>
+
+    <div class="search-bar" id="searchBar" hidden>
+      <input type="search" id="searchInput" placeholder="Поиск по заметкам…" autocomplete="off" spellcheck="false">
+      <span class="search-count" id="searchCount"></span>
+    </div>
+    <div class="search-results" id="searchResults" hidden></div>
+
+    <div class="layout">
+      <main class="calendar">
+
+        <div class="week-block">
+          <div class="week-head">
+            <span class="week-title" id="weekTitle">НЕДЕЛЯ</span>
+            <span class="streak" id="streakLabel">СЕРИЯ 0 дн.</span>
+          </div>
+          <div class="week" id="week"></div>
+        </div>
+
+        <div class="stats-row">
+          <div class="stats" id="stats"></div>
+          <button class="btn-ghost btn-small" id="yearBtn" aria-haspopup="dialog">Обзор года</button>
+        </div>
+
+        <div class="weekdays" aria-hidden="true">
+          <span>пн</span><span>вт</span><span>ср</span><span>чт</span><span>пт</span><span>сб</span><span>вс</span>
+        </div>
+        <div class="days" id="days"></div>
+
+        <div class="legend">
+          <span>Клик по дню — заметки справа</span>
+          <span>Клик по кружку — статус, он же красит рамку дня</span>
+          <span><i class="lg green"></i><i class="lg yellow"></i><i class="lg red"></i></span>
+        </div>
+      </main>
+
+      <aside class="panel" id="panel" aria-label="Заметки дня">
+        <div class="panel-empty" id="panelEmpty">Выберите день в календаре,<br>чтобы увидеть заметки</div>
+
+        <div class="panel-content" id="panelContent" hidden>
+          <div class="panel-head">
+            <h2 id="dayTitle"></h2>
+            <span class="panel-count" id="panelCount"></span>
+          </div>
+
+          <section class="block">
+            <div class="block-label">УЧЁБА</div>
+
+            <div class="study">
+              <input type="number" id="hoursInput" min="0" max="23" step="1" inputmode="numeric" value="0" aria-label="Часы">
+              <span class="unit">ч</span>
+              <input type="number" id="minutesInput" min="0" max="59" step="1" inputmode="numeric" value="0" aria-label="Минуты">
+              <span class="unit">м</span>
+              <button class="btn-ghost btn-small" id="resetStudy" title="Сбросить время">Сброс</button>
+            </div>
+
+            <div class="timer-row">
+              <button class="btn-solid btn-small" id="timerBtn">▶ Старт</button>
+              <span class="timer-time" id="timerTime">00:00</span>
+              <span class="timer-note" id="timerNote"></span>
+            </div>
+
+            <div class="timer-ctrl">
+              <button class="btn-ghost btn-small" id="timerMinus" title="Убрать 5 секунд у таймера">−5 с</button>
+              <button class="btn-ghost btn-small" id="timerPlus" title="Прибавить 5 секунд к таймеру">+5 с</button>
+              <button class="btn-ghost btn-small" id="timerReset" title="Обнулить таймер, не трогая итоговое время">Обнулить таймер</button>
+            </div>
+
+            <div class="goal-row">
+              <span class="goal-label">ЦЕЛЬ В ДЕНЬ</span>
+              <input type="number" id="goalInput" min="0" max="24" step="1" value="2" aria-label="Цель, часов">
+              <span class="unit">ч</span>
+              <input type="number" id="goalMinutesInput" min="0" max="59" step="1" value="0" aria-label="Цель, минут">
+              <span class="unit">м</span>
+            </div>
+
+            <div class="progress"><i id="goalBar"></i></div>
+            <div class="progress-label" id="goalLabel">0%</div>
+          </section>
+
+          <section class="block">
+            <div class="block-label">СТАТУС ДНЯ</div>
+            <div class="statuses" id="statuses">
+              <button class="status-dot s-none is-active" data-status="" title="Не отмечен" aria-label="Не отмечен"></button>
+              <button class="status-dot s-green" data-status="green" title="Зелёный" aria-label="Зелёный"></button>
+              <button class="status-dot s-yellow" data-status="yellow" title="Жёлтый" aria-label="Жёлтый"></button>
+              <button class="status-dot s-red" data-status="red" title="Красный" aria-label="Красный"></button>
+            </div>
+          </section>
+
+          <section class="block block-notes">
+            <div class="block-label">ЗАМЕТКИ</div>
+            <form class="editor" id="entryForm">
+              <textarea id="entryText" rows="3" maxlength="5000" placeholder="Записать мысль на этот день…" required></textarea>
+              <div class="editor-row">
+                <span class="hint" id="editHint"></span>
+                <div class="editor-buttons">
+                  <button type="button" class="btn-ghost btn-small" id="cancelEdit" hidden>Отмена</button>
+                  <button type="submit" class="btn-solid btn-small">Сохранить</button>
+                </div>
+              </div>
+            </form>
+            <ul class="entries" id="entriesList"></ul>
+          </section>
+        </div>
+      </aside>
+    </div>
+
+    <footer class="footer">
+      <button class="btn-ghost" id="exportBtn">Экспорт JSON</button>
+      <button class="btn-ghost" id="mdBtn">Экспорт текста</button>
+      <button class="btn-ghost" id="importBtn">Импорт</button>
+      <button class="btn-ghost" id="undoBtn" disabled title="Отменить последнее действие (Ctrl+Z)">Отменить</button>
+      <button class="btn-ghost" id="privacyBtn" title="Скрыть текст заметок">Скрыть</button>
+      <button class="btn-ghost" id="helpBtn" aria-haspopup="dialog" title="Горячие клавиши">Справка</button>
+      <button class="btn-ghost btn-danger" id="clearBtn">Очистить</button>
+      <input type="file" id="importFile" accept="application/json,.json" hidden>
+      <span class="footer-note">данные только в этом браузере</span>
+    </footer>
+  </div>
+
+  <dialog class="dialog" id="monthDialog">
+    <div class="dialog-head">
+      <h2>МЕСЯЦ</h2>
+      <button class="btn-icon" data-close aria-label="Закрыть">✕</button>
+    </div>
+    <div class="picker-nav">
+      <button class="btn-icon" id="mPrevYear" aria-label="Предыдущий год">‹</button>
+      <span id="mYearLabel"></span>
+      <button class="btn-icon" id="mNextYear" aria-label="Следующий год">›</button>
+    </div>
+    <div class="picker-grid" id="monthGrid"></div>
+  </dialog>
+
+  <dialog class="dialog" id="yearDialog">
+    <div class="dialog-head">
+      <h2>ГОД</h2>
+      <button class="btn-icon" data-close aria-label="Закрыть">✕</button>
+    </div>
+    <div class="picker-nav">
+      <button class="btn-icon" id="yPrevDecade" aria-label="Предыдущее десятилетие">‹</button>
+      <span id="yDecadeLabel"></span>
+      <button class="btn-icon" id="yNextDecade" aria-label="Следующее десятилетие">›</button>
+    </div>
+    <div class="picker-grid picker-years" id="yearGrid"></div>
+  </dialog>
+
+  <dialog class="dialog dialog-feed" id="feedDialog">
+    <div class="dialog-head">
+      <h2>ЛЕНТА ЗАМЕТОК</h2>
+      <button class="btn-icon" data-close aria-label="Закрыть">✕</button>
+    </div>
+    <input class="feed-filter" id="feedFilter" type="search" placeholder="Фильтр по тексту…" autocomplete="off">
+    <div class="feed-list" id="feedList"></div>
+  </dialog>
+
+  <dialog class="dialog dialog-overview" id="overviewDialog">
+    <div class="dialog-head">
+      <h2 id="ovTitle">ОБЗОР ГОДА</h2>
+      <button class="btn-icon" data-close aria-label="Закрыть">✕</button>
+    </div>
+    <div class="ov-totals" id="ovTotals"></div>
+    <div class="ov-grid" id="ovGrid"></div>
+    <div class="ov-legend">
+      <span>нет данных</span>
+      <i class="ov-sq"></i>
+      <i class="ov-sq lv1"></i>
+      <i class="ov-sq lv2"></i>
+      <i class="ov-sq lv3"></i>
+      <span>больше часов</span>
+      <i class="ov-sq st-green"></i>
+      <i class="ov-sq st-yellow"></i>
+      <i class="ov-sq st-red"></i>
+      <span>статус</span>
+    </div>
+    <div class="ov-week" id="ovWeek"></div>
+  </dialog>
+
+  <dialog class="dialog" id="helpDialog">
+    <div class="dialog-head">
+      <h2>ГОРЯЧИЕ КЛАВИШИ</h2>
+      <button class="btn-icon" data-close aria-label="Закрыть">✕</button>
+    </div>
+    <dl class="hotkeys">
+      <dt>← →</dt><dd>предыдущий / следующий месяц</dd>
+      <dt>T</dt><dd>сегодняшний день</dd>
+      <dt>F</dt><dd>лента заметок</dd>
+      <dt>Y</dt><dd>обзор года</dd>
+      <dt>N</dt><dd>новая заметка для выбранного дня</dd>
+      <dt>1 – 4</dt><dd>статус дня: нет / зелёный / жёлтый / красный</dd>
+      <dt>Ctrl+Z</dt><dd>отменить последнее действие</dd>
+      <dt>Enter</dt><dd>открыть день (фокус на ячейке)</dd>
+      <dt>Esc</dt><dd>закрыть окно</dd>
+    </dl>
+    <p class="confirm-text">Всё хранится только в этом браузере. Регулярно делайте экспорт.</p>
+  </dialog>
+
+  <dialog class="dialog" id="confirmDialog">
+    <div class="dialog-head">
+      <h2 id="confirmTitle">ПОДТВЕРЖДЕНИЕ</h2>
+      <button class="btn-icon" data-close aria-label="Закрыть">✕</button>
+    </div>
+    <p class="confirm-text" id="confirmText"></p>
+    <div class="confirm-actions">
+      <button class="btn-ghost" data-close>Отмена</button>
+      <button class="btn-solid btn-danger-solid" id="confirmOk">Удалить</button>
+    </div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <noscript><p class="panel-empty">Для работы дневника включите JavaScript.</p></noscript>
+
+  <script src="app.js"></script>
+</body>
+</html>
