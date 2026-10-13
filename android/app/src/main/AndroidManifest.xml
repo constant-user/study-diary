@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Дневник — Android-обёртка.
+  ВНИМАНИЕ: приложение НЕ запрашивает НИ ОДНОГО разрешения.
+  • Нет INTERNET — доступа в сеть у приложения нет на уровне системы.
+  • Локальные файлы раздаются через shouldInterceptRequest по зарезервированному
+    домену appassets.androidplatform.net (рекомендация Google вместо file://).
+  • Данные дневника хранятся только в localStorage WebView (папка приложения).
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.constantuser.studydiary">
+
+    <application
+        android:label="@string/app_name"
+        android:icon="@drawable/ic_launcher"
+        android:theme="@android:style/Theme.Material.Light.NoActionBar"
+        android:allowBackup="true"
+        android:supportsRtl="true"
+        android:usesCleartextTraffic="false">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|smallestScreenSize|density">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>

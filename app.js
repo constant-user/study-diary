@@ -1452,6 +1452,37 @@ function jumpToDate(value) {
 
 /* ------------------------- Экспорт текстом ---------------------- */
 
+/* В Android-обёртке файл уходит через мост в «Загрузки», иначе — обычное скачивание */
+function saveViaAndroid(name, content) {
+  try {
+    const bridge = window.DiaryAndroid;
+    if (bridge && typeof bridge.saveFile === 'function') {
+      bridge.saveFile(name, content);
+      return true;
+    }
+  } catch (err) {
+    console.warn(err);
+  }
+  return false;
+}
+
+function downloadBlob(content, mime, name) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function fileStamp() {
+  const d = new Date();
+  return d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate());
+}
+
 function exportMarkdown() {
   const keys = Object.keys(notes).sort((a, b) => (a < b ? 1 : -1));
   if (!keys.length) {
@@ -1480,16 +1511,12 @@ function exportMarkdown() {
     lines.push('');
   }
 
-  const blob = new Blob([lines.join('\n')], { type: 'text/markdown;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  const d = new Date();
-  a.href = url;
-  a.download = 'diary-' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '.md';
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  const name = 'diary-' + fileStamp() + '.md';
+  if (saveViaAndroid(name, lines.join('\n'))) {
+    toast('Файл сохранён в «Загрузки»');
+    return;
+  }
+  downloadBlob(lines.join('\n'), 'text/markdown;charset=utf-8', name);
   toast('Текстовый файл сохранён');
 }
 
@@ -1628,16 +1655,13 @@ function exportData() {
     marks: marks,
     settings: settings
   };
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  const d = new Date();
-  a.href = url;
-  a.download = 'diary-' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '.json';
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  const name = 'diary-' + fileStamp() + '.json';
+  const content = JSON.stringify(payload, null, 2);
+  if (saveViaAndroid(name, content)) {
+    toast('Резервная копия сохранена в «Загрузки»');
+    return;
+  }
+  downloadBlob(content, 'application/json', name);
   toast('Резервная копия сохранена');
 }
 

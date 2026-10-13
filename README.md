@@ -109,6 +109,18 @@ URI. Ни при установке темы, ни при работе прил�
 - Кнопка **«Экспорт текста»** — сохраняет все заметки в читаемый `.md` файл
   (JSON-копия — «Экспорт JSON»)
 
+## Android-версия
+
+В папке `android/` — нативная обёртка APK для Android 10+:
+
+- **Ноль разрешений**: нет даже `INTERNET` — у приложения нет доступа в сеть
+- Данные дневника хранятся только в памяти приложения (localStorage WebView)
+- Локальные файлы раздаются по зарезервированному домену
+  `appassets.androidplatform.net` (рекомендация Google вместо `file://`)
+- Экспорт сохраняется в «Загрузки/Дневник», импорт — через выбор файла
+- Сборка: `powershell -ExecutionPolicy Bypass -File android\build-apk.ps1`
+  (без Gradle: aapt2 + javac + d8 + apksigner), подробности — в `android/README.md`
+
 ## Данные
 
 - Заметки: `localStorage` → `diary.entries.v1`
