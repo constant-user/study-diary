@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Передний план иконки: календарная страница с кольцами переплёта
+  и зелёной галочкой (зелёный — цвет статуса «всё сделано»).
+  Геометрия в единой сетке 256x256 — те же координаты, что и в
+  утверждённом макете (см. итоги проектирования): страница 60,64 136x148,
+  шапка 60,64 136x40, кольца 84/156 x 74 16x38, галочка 90,156 → 117,183 → 167,127.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="256"
+    android:viewportHeight="256">
+
+    <!-- белая страница -->
+    <path
+        android:fillColor="#F5F5F7"
+        android:pathData="M80,64 H176 A20,20 0 0 1 196,84 V192 A20,20 0 0 1 176,212 H80 A20,20 0 0 1 60,192 V84 A20,20 0 0 1 80,64 Z" />
+
+    <!-- тёмная шапка месяца (в цвет фона) -->
+    <path
+        android:fillColor="#101014"
+        android:pathData="M80,64 H176 A20,20 0 0 1 196,84 V104 H60 V84 A20,20 0 0 1 80,64 Z" />
+
+    <!-- кольца переплёта -->
+    <path
+        android:fillColor="#F5F5F7"
+        android:pathData="M84,82 A8,8 0 0 1 92,74 A8,8 0 0 1 100,82 V104 A8,8 0 0 1 92,112 A8,8 0 0 1 84,104 Z" />
+    <path
+        android:fillColor="#F5F5F7"
+        android:pathData="M156,82 A8,8 0 0 1 164,74 A8,8 0 0 1 172,82 V104 A8,8 0 0 1 164,112 A8,8 0 0 1 156,104 Z" />
+
+    <!-- галочка статуса -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#35D07F"
+        android:strokeWidth="18"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M90,156 L117,183 L167,127" />
+</vector>
